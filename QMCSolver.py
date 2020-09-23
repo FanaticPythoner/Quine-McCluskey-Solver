@@ -1,5 +1,5 @@
 import pandas as pd
-from itertools import product
+from itertools import product, combinations
 from copy import deepcopy
 import numpy as np
 import os
@@ -487,7 +487,8 @@ class QMCSolver:
             dfObj.iloc[iRow, iCol] = 1
 
         dfObj[self._getSelectFinalLang()] = self._getNoLang()
-        bestRows = dfObj[dfObj.sum(axis=1).ge(2)]
+        cols = [x for x in dfObj.columns.values.tolist() if x != self._getSelectFinalLang()]#dfObj.columns.get_loc(x)
+        bestRows = self._getBestRowsFinalSelection(dfObj, cols) #dfObj.loc[:, cols][dfObj.sum(axis=1).ge(2)]
         dfObj.loc[bestRows.index.values.tolist(), [self._getSelectFinalLang()]] = self._getYesLang()
 
         nameSheet = self._getStepCompLang()
@@ -495,6 +496,38 @@ class QMCSolver:
         self._updateDataSheetWriter(nameSheet, dfObj)
 
         return dfObj
+
+
+    def _getBestRowsFinalSelection(self, df, cols):
+        """
+            Get the selected rows for the final selection
+
+            RETURNS -> DataFrame : dfSelected
+        """
+        isOne = df.loc[df[df.loc[:, cols] == 1].sum(axis=1) > 0, :]
+        lstIsOne = isOne.loc[:, cols].values.tolist()
+        lstIsOne = [(x, lstItem) for x, lstItem in zip(isOne.index.values.tolist(), lstIsOne)]
+        winningComb = None
+        stopFlag = False
+
+        for i in range(1, isOne.shape[0] + 1):
+            if stopFlag:
+                break;
+            combs = combinations(lstIsOne, i)
+
+            for c in combs:
+                data = [x[1] for x in c]
+                index = [x[0] for x in c]
+                dfTmp = pd.DataFrame(data=data, columns=cols, index=index)
+                if (dfTmp.sum() > 0).all():
+                    dfTmp[self._getSelectFinalLang()] = self._getYesLang()
+                    winningComb = dfTmp
+                    stopFlag = True
+                    break;
+
+
+        return winningComb
+
 
 
     def _getFinalEquation(self, dfObj):
