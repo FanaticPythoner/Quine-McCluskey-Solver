@@ -18,7 +18,7 @@ Once you open the project, you will find a class named *QMCSolver* inside the fi
   
 Once you create the instance, simply call the *calculate* method to solve the problem and generate the Excel file. Here's the example provided in the *demo.py* file:
 
-![alt text](https://i.imgur.com/rAWvi7s.png)
+![alt text](https://i.imgur.com/HPwA0S4.png)
 
 
 Output Excel file after running the previous code:
