@@ -15,8 +15,9 @@ class QMCSolver:
                 3. lstVars: List of variables to use
                 4. outputPath: Output excel path
                 5. lang: language for the excel export. Can be either "en" (English) or "fr" (French)
+                6. forceTruthTable: pandas dataframe truth table to use, skip truth table generation
     """
-    def __init__(self, lstTrue, lstDontCare, lstVars, outputPath, lang="en"):
+    def __init__(self, lstTrue, lstDontCare, lstVars, outputPath, lang="en", forceTruthTable=None):
         self.lang = lang
         self.dicVars = {val:False for val in lstVars}
         self.lstVars = lstVars
@@ -42,7 +43,11 @@ class QMCSolver:
 
         exec("def " + self._getResultLang() + "(" + params + "): return " + strBu, self.dicFunc)
 
-        self._getTruthTable()
+        if forceTruthTable is None:
+            self._getTruthTable()
+        else:
+            self.truthTable = forceTruthTable.copy()
+            self._updateDataSheetWriter(self._getTruthTableLang(), self.truthTable)
 
 
     def _getResultLang(self):
@@ -52,7 +57,7 @@ class QMCSolver:
             RETURNS -> Str: string
         """
         if self.lang == "fr":
-            return "Resultat"
+            return "Résultat"
         else:
             return "Result"
 
@@ -64,7 +69,7 @@ class QMCSolver:
             RETURNS -> Str: string
         """
         if self.lang == "fr":
-            return "Utilise"
+            return "Utilisé"
         else:
             return "Used"
 
@@ -171,7 +176,7 @@ class QMCSolver:
         
             RETURNS -> Void
         """
-        self.writer = pd.ExcelWriter(self.outputPath, engine='xlsxwriter', options={'strings_to_numbers': True})
+        self.writer = pd.ExcelWriter(self.outputPath, engine='xlsxwriter', options={'strings_to_numbers': False})
         self._addSheetWriter(self._getTruthTableLang())
 
 
@@ -193,6 +198,15 @@ class QMCSolver:
             RETURNS -> Void
         """
         df.to_excel(self.writer, sheet_name=name, index=index)
+        forma = self.writer.book.add_format()
+        forma.set_align('left')
+
+        def get_col_widths(dataframe):
+            idx_max = max([len(str(s)) for s in dataframe.index.values] + [len(str(dataframe.index.name))])
+            return [idx_max] + [max([len(str(s)) for s in dataframe[col].values] + [len(col)]) for col in dataframe.columns]
+
+        for i, width in enumerate(get_col_widths(df)):
+            self.writer.sheets[name].set_column(i, i, int(width * 1.5), forma)
 
 
     def _getTruthTable(self):
@@ -212,7 +226,7 @@ class QMCSolver:
         df.iloc[self.lstDontCare, df.columns.get_loc(self._getResultLang())] = np.nan
 
         df = df.astype(float)
-        df = df.replace(np.nan, 'X')
+        df = df.replace(np.nan, 'd')
         df = df.astype(str).replace('1.0', '1').replace('0.0', '0')
         #df.to_excel(os.path.join(self.outputPath, 'Table_De_Verite.xlsx'), engine='xlsxwriter')
         self.truthTable = df.copy()
@@ -554,7 +568,7 @@ class QMCSolver:
         
         nameSheet = finalEqLang
         self._addSheetWriter(nameSheet)
-        self._updateDataSheetWriter(nameSheet, strEq, index=False)
+        self._updateDataSheetWriter(nameSheet, strEq, index=True)
 
 
 
